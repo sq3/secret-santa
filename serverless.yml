@@ -1,0 +1,22 @@
+service: secret-santa
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: eu-central-1
+
+functions:
+  secretSantaFunction:
+    handler: handler.secretSantaFunction
+    events:
+      - http:
+          path: pair-participants
+          method: post
+          cors: true
+    environment:
+      # Add your SES configuration here
+      SES_SENDER_EMAIL: 'secret-santa@mschnitzius.com' # Replace with your verified SES email
+
+plugins:
+  - serverless-offline
