@@ -14,17 +14,20 @@ module.exports.secretSantaFunction = async (event) => {
 
     // Generate pairs
     const pairs = [];
+    const assignedReceivers = new Set();
     for (let i = 0; i < shuffledParticipants.length; i++) {
       console.log('Current Participant:', shuffledParticipants[i]);
       const giver = shuffledParticipants[i];
       let receiverIndex = (i + 1) % shuffledParticipants.length;
 
       while (giver.email === shuffledParticipants[receiverIndex].email ||
-             (blacklist[giver.email] && blacklist[giver.email].includes(shuffledParticipants[receiverIndex].email))) {
+             (blacklist[giver.email] && blacklist[giver.email].includes(shuffledParticipants[receiverIndex].email)) ||
+             assignedReceivers.has(shuffledParticipants[receiverIndex].email)) {
         receiverIndex = (receiverIndex + 1) % shuffledParticipants.length;
       }
 
       const receiver = shuffledParticipants[receiverIndex];
+      assignedReceivers.add(receiver.email);
       pairs.push({
         giver: giver.name,
         giver_email: giver.email,
