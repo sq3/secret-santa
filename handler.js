@@ -5,7 +5,9 @@ const ses = new AWS.SES();
 
 module.exports.secretSantaFunction = async (event) => {
   try {
-    const participants = JSON.parse(event.body || '').participants || [];
+    const body = JSON.parse(event.body || '');
+    const participants = body.participants || [];
+    const blacklist = body.blacklist || {};
 
     // Shuffle the participants to randomize the pairings
     const shuffledParticipants = shuffleArray(participants);
@@ -15,40 +17,26 @@ module.exports.secretSantaFunction = async (event) => {
     for (let i = 0; i < shuffledParticipants.length; i++) {
       console.log('Current Participant:', shuffledParticipants[i]);
       const giver = shuffledParticipants[i];
-      const receiverIndex = (i + 1) % shuffledParticipants.length;
-      const receiver = shuffledParticipants[receiverIndex];
+      let receiverIndex = (i + 1) % shuffledParticipants.length;
 
-      // Check if giver and receiver are the same person
-      if (giver.email !== receiver.email) {
-        pairs.push({
-          giver: giver.name,
-          giver_email: giver.email,
-          receiver: receiver.name,
-          receiver_email: receiver.email,
-        });
-      } else {
-        // If giver and receiver are the same person, find the next available receiver
-        let nextReceiverIndex = (receiverIndex + 1) % shuffledParticipants.length;
-        while (nextReceiverIndex !== receiverIndex) {
-          const nextReceiver = shuffledParticipants[nextReceiverIndex];
-          if (giver.email !== nextReceiver.email) {
-            pairs.push({
-              giver: giver.name,
-              giver_email: giver.email,
-              receiver: nextReceiver.name,
-              receiver_email: nextReceiver.email,
-            });
-            break;
-          }
-          nextReceiverIndex = (nextReceiverIndex + 1) % shuffledParticipants.length;
-        }
+      while (giver.email === shuffledParticipants[receiverIndex].email ||
+             (blacklist[giver.email] && blacklist[giver.email].includes(shuffledParticipants[receiverIndex].email))) {
+        receiverIndex = (receiverIndex + 1) % shuffledParticipants.length;
       }
+
+      const receiver = shuffledParticipants[receiverIndex];
+      pairs.push({
+        giver: giver.name,
+        giver_email: giver.email,
+        receiver: receiver.name,
+        receiver_email: receiver.email,
+      });
     }
 
     // Send email notifications via SES
     for (const pair of pairs) {
-      const subject = 'Secret Santa Notification';
-      const message = `Hello ${pair.giver}, your Secret Santa receiver is ${pair.receiver}.`;
+      const subject = '🎅 Wichtel-Generator Notification 📣';
+      const message = `Hey 👋 ${pair.giver}, dein Wichtel ist ${pair.receiver}. Frohe Weihnachten 🎄`;
 
       await ses.sendEmail({
         Destination: { ToAddresses: [pair.giver_email] },
@@ -81,3 +69,4 @@ function shuffleArray(array) {
   }
   return array;
 }
+
